@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Family Secret Santa</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: linear-gradient(#b71c1c, #1b5e20); color: #fff; min-height: 100vh; margin: 0; display: flex; justify-content: center; align-items: center; }
+    .card { background: rgba(0,0,0,0.6); padding: 20px; border-radius: 16px; width: 90%; max-width: 600px; box-shadow: 0 0 20px rgba(0,0,0,0.4); }
+    h1 { text-align: center; margin-top: 0; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, textarea, button { width: 100%; margin-top: 5px; padding: 8px; border-radius: 8px; border: none; }
+    button { margin-top: 15px; cursor: pointer; font-weight: bold; }
+    .players { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .player-btn { flex: 1 1 45%; }
+    .result { margin-top: 15px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎄 Family Secret Santa 🎁</h1>
+    <label>Organizer Name</label>
+    <input id="organizer" placeholder="Enter organizer name" />
+
+    <label>Members (one per line)</label>
+    <textarea id="members" rows="6" placeholder="e.g.&#10;Alice&#10;Bob&#10;Charlie"></textarea>
+
+    <button onclick="createPairs()">Create Secret Pairs</button>
+
+    <div id="players" class="players"></div>
+
+    <div id="result" class="result"></div>
+  </div>
+
+  <script>
+    let assignments = {};
+
+    function normalizeName(name) {
+      name = name.trim();
+      if (!name) return null;
+      const first = name.split(/\s+/)[0];
+      return first.toUpperCase();
+    }
+
+    function derange(list) {
+      const n = list.length;
+      if (n < 2) return null;
+      let rotated = list.slice();
+      const shift = Math.floor(Math.random() * (n - 1)) + 1; // 1..n-1
+      rotated = rotated.map((_, i) => list[(i + shift) % n]);
+      return rotated;
+    }
+
+    function createPairs() {
+      const rawMembers = document.getElementById('members').value.split('\n');
+      const members = rawMembers.map(normalizeName).filter(Boolean);
+      const unique = [...new Set(members)];
+      if (unique.length < 2) {
+        alert('Need at least 2 unique members!');
+        return;
+      }
+
+      const giftees = derange(unique);
+      assignments = {};
+      unique.forEach((name, i) => {
+        assignments[name] = giftees[i];
+      });
+
+      const playersDiv = document.getElementById('players');
+      playersDiv.innerHTML = '';
+      unique.forEach(name => {
+        const btn = document.createElement('button');
+        btn.textContent = name;
+        btn.className = 'player-btn';
+        btn.onclick = () => showAssignment(name);
+        playersDiv.appendChild(btn);
+      });
+
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('result').textContent = '';
+    }
+
+    function showAssignment(name) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      resultDiv.textContent = name + ' will gift to: ' + assignments[name];
+    }
+  </script>
+</body>
+</html>

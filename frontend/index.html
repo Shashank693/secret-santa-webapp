@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Family Secret Santa</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(#b71c1c, #1b5e20);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .screen { display: none; width: 90%; max-width: 800px; }
+    .active { display: block; }
+    .card {
+      background: rgba(0,0,0,0.6);
+      padding: 24px;
+      border-radius: 18px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.5);
+    }
+    h1, h2 { text-align: center; margin-top: 0; }
+    .center { text-align: center; }
+    button {
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: none;
+      margin-top: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      width: 100%;
+    }
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-row button { width: 50%; }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      margin-top: 5px;
+    }
+    label { margin-top: 10px; display: block; font-weight: bold; }
+    .small { font-size: 0.9rem; opacity: 0.8; }
+    .back-link { cursor: pointer; font-size: 0.9rem; opacity: 0.8; text-decoration: underline; }
+    .players { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .chair {
+      background: rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 10px;
+      min-width: 90px;
+      text-align: center;
+      font-weight: bold;
+    }
+    .chair::before { content: "🪑 "; }
+    .tree { font-size: 3rem; text-align: center; margin-bottom: 10px; }
+    .gift-box { margin-top: 20px; text-align: center; }
+    .gift {
+      display: inline-block;
+      padding: 20px;
+      border-radius: 16px;
+      background: #ffca28;
+      font-size: 2rem;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s;
+    }
+    .gift.opened { background: #c8e6c9; }
+    .gift.shake { animation: shake 0.4s; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-3px); }
+    }
+    .result-box {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.1);
+      min-height: 40px;
+    }
+    .room-info {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.1);
+      font-size: 0.9rem;
+    }
+    .codes-list {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <!-- Landing Screen -->
+  <div id="screen-landing" class="screen active">
+    <div class="card">
+      <div class="tree">🎅🎄🎁</div>
+      <h1>Family Secret Santa</h1>
+      <p class="center small">No logins. Just pure Christmas fun.</p>
+      <div class="btn-row">
+        <button onclick="goToOrganizer()">Start as Organizer</button>
+        <button onclick="goToPlayer()">Enter Room Code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Organizer Screen -->
+  <div id="screen-organizer" class="screen">
+    <div class="card">
+      <div class="back-link" onclick="goToLanding()">← Back</div>
+      <h2>Organizer Setup</h2>
+      <label>Organizer Name</label>
+      <input id="organizerName" placeholder="Your name" />
+
+      <label>
+        <input type="checkbox" id="organizerPlays" style="width:auto; margin-right:6px;">
+        Include me as a player
+      </label>
+
+      <label>Other Members (one per line)</label>
+      <textarea id="memberList" rows="6" placeholder="e.g.&#10;Alice&#10;Bob&#10;Charlie"></textarea>
+
+      <button onclick="createRoom()">Create Room & Assign Pairs</button>
+
+      <div id="roomInfo" class="room-info" style="display:none;">
+        <div><strong>Room Code:</strong> <span id="roomCodeText"></span></div>
+        <div class="small">Share this with players + their 4-digit secret codes below.</div>
+        <div class="codes-list" id="codesList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Player Screen -->
+  <div id="screen-player" class="screen">
+    <div class="card">
+      <div class="back-link" onclick="goToLanding()">← Back</div>
+      <h2>Join Secret Santa Room</h2>
+
+      <label>Room Code</label>
+      <input id="joinRoomCode" placeholder="Enter room code" />
+      <button onclick="joinRoom()">Enter Room</button>
+
+      <div id="playerArea" style="display:none;">
+        <p class="center small">Everyone is seated. Enter your name & secret code to open your gift!</p>
+        <div class="players" id="chairs"></div>
+
+        <label>Your Name</label>
+        <input id="playerName" placeholder="FIRST NAME only" />
+
+        <label>Your 4-digit Secret Code</label>
+        <input id="playerCode" placeholder="e.g. 4729" />
+
+        <div class="gift-box">
+          <div id="giftBox" class="gift" onclick="revealGift()">🎁</div>
+        </div>
+
+        <div id="result" class="result-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentJoinRoomCode = null;
+
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function goToLanding() { showScreen('screen-landing'); }
+    function goToOrganizer() { showScreen('screen-organizer'); }
+    function goToPlayer() { showScreen('screen-player'); }
+
+    function normalizeName(name) {
+      name = name.trim();
+      if (!name) return null;
+      const first = name.split(/\s+/)[0];
+      return first.toUpperCase();
+    }
+
+    async function createRoom() {
+      const orgNameRaw = document.getElementById('organizerName').value;
+      const includeOrg = document.getElementById('organizerPlays').checked;
+      const memberLines = document.getElementById('memberList').value.split('\n');
+
+      let members = memberLines.map(normalizeName).filter(Boolean);
+
+      const payload = {
+        organizerName: orgNameRaw,
+        includeOrganizer: includeOrg,
+        members
+      };
+
+      try {
+        const res = await fetch('http://localhost:8000/api/create-room', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || 'Error creating room');
+          return;
+        }
+
+        document.getElementById('roomInfo').style.display = 'block';
+        document.getElementById('roomCodeText').textContent = data.roomCode;
+
+        const listDiv = document.getElementById('codesList');
+        listDiv.innerHTML = "<strong>Player Codes:</strong><br>";
+        Object.entries(data.codes).forEach(([name, code]) => {
+          listDiv.innerHTML += `${name}: ${code}<br>`;
+        });
+
+        alert('Room created! Share the room code and each person\'s 4-digit code.');
+      } catch (e) {
+        console.error(e);
+        alert('Network error while creating room');
+      }
+    }
+
+    async function joinRoom() {
+      const code = document.getElementById('joinRoomCode').value.trim().toUpperCase();
+      if (!code) {
+        alert('Enter a room code');
+        return;
+      }
+
+      try {
+        const res = await fetch(`http://localhost:8000/api/join-room/${code}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.error || 'Unable to join room');
+          return;
+        }
+
+        currentJoinRoomCode = code;
+
+        const chairsDiv = document.getElementById('chairs');
+        chairsDiv.innerHTML = '';
+        data.members.forEach(name => {
+          const div = document.createElement('div');
+          div.className = 'chair';
+          div.textContent = name;
+          chairsDiv.appendChild(div);
+        });
+
+        document.getElementById('playerArea').style.display = 'block';
+        document.getElementById('result').textContent = '';
+        document.getElementById('giftBox').classList.remove('opened', 'shake');
+      } catch (e) {
+        console.error(e);
+        alert('Network error while joining room');
+      }
+    }
+
+    async function revealGift() {
+      if (!currentJoinRoomCode) {
+        alert('Join a room first');
+        return;
+      }
+
+      const nameInput = document.getElementById('playerName').value;
+      const codeInput = document.getElementById('playerCode').value.trim();
+      const name = normalizeName(nameInput || '');
+
+      const giftEl = document.getElementById('giftBox');
+      const resultEl = document.getElementById('result');
+
+      if (!name || !codeInput) {
+        resultEl.textContent = 'Please enter your name and secret code.';
+        shakeGift(giftEl);
+        return;
+      }
+
+      try {
+        const res = await fetch('http://localhost:8000/api/reveal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomCode: currentJoinRoomCode,
+            name,
+            code: codeInput
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          resultEl.textContent = data.error || 'Error revealing gift';
+          shakeGift(giftEl);
+          return;
+        }
+
+        giftEl.classList.add('opened');
+        resultEl.textContent = `${name}, you will gift to: ${data.giftTo}! 🎁`;
+      } catch (e) {
+        console.error(e);
+        resultEl.textContent = 'Network error while revealing gift.';
+        shakeGift(giftEl);
+      }
+    }
+
+    function shakeGift(el) {
+      el.classList.remove('shake');
+      void el.offsetWidth;
+      el.classList.add('shake');
+    }
+  </script>
+</body>
+</html>
