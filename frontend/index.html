@@ -200,7 +200,7 @@
       };
 
       try {
-        const res = await fetch('http://localhost:8000/api/create-room', {
+        const res = await fetch('https://family-secret-santa-t825.onrender.com/api/create-room', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -236,7 +236,7 @@
       }
 
       try {
-        const res = await fetch(`http://localhost:8000/api/join-room/${code}`);
+        const res = await fetch(`https://family-secret-santa-t825.onrender.com/api/join-room/${code}`);
         const data = await res.json();
 
         if (!res.ok) {
@@ -284,7 +284,7 @@
       }
 
       try {
-        const res = await fetch('http://localhost:8000/api/reveal', {
+        const res = await fetch('https://family-secret-santa-t825.onrender.com/api/reveal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
